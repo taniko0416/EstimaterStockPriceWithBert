@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import csv
 import pandas as pd
 from pathlib import Path
@@ -13,11 +15,6 @@ with open(file_name, encoding='utf-8', newline='') as f:
 
 df = pd.DataFrame({'text': list_article_body, 'label': list_label})
 df = df.sample(frac=1, random_state=12).reset_index(drop=True)
-
-
-
-
-
 
 len_0_2 = len(df) // 5
 
@@ -43,19 +40,19 @@ list_val_label = []
 with open('./data/test.tsv', encoding='utf-8', newline='') as f:
     for cols in csv.reader(f, delimiter='\t'):
         list_test_article_body.append(cols[0])
-        list_test_label.append(cols[1])
+        list_test_label.append(float(cols[1]))
 
 with open('./data/train.tsv', encoding='utf-8', newline='') as f:
     for cols in csv.reader(f, delimiter='\t'):
         list_train_eval_article_body.append(cols[0])
-        list_train_eval_label.append(cols[1])
+        list_train_eval_label.append(float(cols[1]))
 
 with open('./data/eval.tsv', encoding='utf-8', newline='') as f:
     for cols in csv.reader(f, delimiter='\t'):
         list_val_article_body.append(cols[0])
-        list_val_label.append(cols[1])
+        list_val_label.append(float(cols[1]))
 
-
+print('type(list_val_label[1]:',type(list_val_label[1]))
 
 from transformers import DistilBertTokenizerFast
 tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
@@ -65,7 +62,6 @@ train_encodings = tokenizer(list_train_eval_article_body, truncation=True, paddi
 val_encodings = tokenizer(list_val_article_body, truncation=True, padding=True)
 test_encodings = tokenizer(list_test_article_body, truncation=True, padding=True)
 
-
 import torch
 
 class IMDbDataset(torch.utils.data.Dataset):
@@ -74,6 +70,7 @@ class IMDbDataset(torch.utils.data.Dataset):
         self.labels = labels
 
     def __getitem__(self, idx):
+        # encodingsはitemでdicをリストのようにKeyとValで扱える
         item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
         item['labels'] = torch.tensor(self.labels[idx])
         return item
@@ -98,31 +95,29 @@ test_dataset = IMDbDataset(test_encodings, list_test_label)
 
 
 
+from torch.utils.data import DataLoader
+from transformers import DistilBertForSequenceClassification, AdamW
 
-# from torch.utils.data import DataLoader
-# from transformers import DistilBertForSequenceClassification, AdamW
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+print(device)
+model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased')
+model.to(device)
+model.train()
 
-# device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 
-# print(device)
+optim = AdamW(model.parameters(), lr=5e-5)
 
-# model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased')
-# model.to(device)
-# model.train()
+for epoch in range(3):
+    print(epoch,'回目')
+    for batch in train_loader:
+        optim.zero_grad()
+        input_ids = batch['input_ids'].to(device)
+        attention_mask = batch['attention_mask'].to(device)
+        labels = batch['labels'].to(device)
+        outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
+        loss = outputs[0]
+        loss.backward()
+        optim.step()
 
-# train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-
-# optim = AdamW(model.parameters(), lr=5e-5)
-
-# for epoch in range(3):
-#     for batch in train_loader:
-#         optim.zero_grad()
-#         input_ids = batch['input_ids'].to(device)
-#         attention_mask = batch['attention_mask'].to(device)
-#         labels = batch['labels'].to(device)
-#         outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-#         loss = outputs[0]
-#         loss.backward()
-#         optim.step()
-
-# model.eval()
+model.eval()
