@@ -3,6 +3,7 @@
 import csv
 import pandas as pd
 from pathlib import Path
+import math
 
 file_name = './data/reuter_dataset.tsv'
 list_article_body = []
@@ -40,17 +41,33 @@ list_val_label = []
 with open('./data/test.tsv', encoding='utf-8', newline='') as f:
     for cols in csv.reader(f, delimiter='\t'):
         list_test_article_body.append(cols[0])
-        list_test_label.append(float(cols[1]))
+        
+        if float(cols[1]) > 0:
+            cols[1] = 1
+        else:
+            cols[1] = 0
+
+        list_test_label.append(cols[1])
 
 with open('./data/train.tsv', encoding='utf-8', newline='') as f:
     for cols in csv.reader(f, delimiter='\t'):
         list_train_eval_article_body.append(cols[0])
-        list_train_eval_label.append(float(cols[1]))
+        
+        if float(cols[1]) > 0:
+            cols[1] = 1
+        else:
+            cols[1] = 0
+        list_train_eval_label.append(cols[1])
 
 with open('./data/eval.tsv', encoding='utf-8', newline='') as f:
     for cols in csv.reader(f, delimiter='\t'):
         list_val_article_body.append(cols[0])
-        list_val_label.append(float(cols[1]))
+        
+        if float(cols[1]) > 0:
+            cols[1] = 1
+        else:
+            cols[1] = 0
+        list_val_label.append(cols[1])
 
 print('type(list_val_label[1]:',type(list_val_label[1]))
 
